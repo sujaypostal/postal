@@ -41,7 +41,7 @@ function ckey(fn,a){
 }
 function queueable(fn,a){
   if(fn==='api')return a[1]==='saveCollection';
-  return ['subMark','subMarkMany','subPay','subSetPhone','subUnmark'].indexOf(fn)>=0;
+  return ['subMark','subMarkMany','subSetPhone','subUnmark'].indexOf(fn)>=0;
 }
 function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function modeKey(m){m=String(m||'').toLowerCase();if(m.indexOf('credit')>=0||m==='dhar')return 'Credit';
@@ -161,6 +161,11 @@ function offline(fn,a,k,wr){
 function send(fn,a){
   if(!apiId()){setupBox();return Promise.reject(new Error('অ্যাপের সংযোগ বসানো নেই'));}
   if(fn==='login')return loginFn(a[0]);
+  /* "হিসাব পাঠান" only with the net: first the waiting ticks go, then the account */
+  if(fn==='subPay'){
+    if(navigator.onLine===false)return Promise.reject(new Error('📴 নেট নেই — নেট এলে "হিসাব পাঠান" চাপুন। টিকগুলো ফোনে জমা আছে'));
+    if(getQ().length)return waitSync().then(function(){return send(fn,a);});
+  }
   var k=ckey(fn,a),wr=queueable(fn,a);
   /* entries wait in order: while older ones are waiting, new ones join the line */
   if(wr&&getQ().length){var r0=offline(fn,a,k,wr);setTimeout(sync,300);return r0;}
@@ -175,6 +180,10 @@ function send(fn,a){
 
 /* ---------- send the waiting entries ---------- */
 var SYNCING=false,SENT=0;
+function waitSync(){return new Promise(function(res,rej){var t0=Date.now();(function chk(){
+  if(!getQ().length)return res();
+  if(navigator.onLine===false||Date.now()-t0>45000)return rej(new Error('আগের টিকগুলো এখনো পাঠানো যায়নি — একটু পরে আবার "হিসাব পাঠান" চাপুন'));
+  sync();setTimeout(chk,700);})();});}
 function sync(){
   if(SYNCING||navigator.onLine===false||!getQ().length){banner();return;}
   SYNCING=true;banner();
