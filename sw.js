@@ -1,5 +1,5 @@
 /* keeps the app on the phone so it opens without internet */
-const C = 'pam-v1';
+const C = 'postal-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
