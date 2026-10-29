@@ -11,8 +11,13 @@ var P=qs();
 var STANDALONE=false;try{STANDALONE=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){}
 if(P.a)lset('pam_api',P.a);
 /* sub-agent link: remember it, so the home-screen icon opens his page again */
-if(P.s)lset('pam_s',P.s);else if(!STANDALONE)lset('pam_s',null);
-if(!P.s&&STANDALONE&&lget('pam_s',''))P.s=lget('pam_s','');
+/* the agent's own phone (he has logged in here) never turns into a sub-agent page by itself;
+   a sub-agent link opened on it shows that page only for that one time */
+var AGENTDEV=!!lget('pam_pwh','');
+if(AGENTDEV)lset('pam_s',null);
+if(P.s){if(!AGENTDEV)lset('pam_s',P.s);}
+else if(!STANDALONE)lset('pam_s',null);
+if(!P.s&&STANDALONE&&!AGENTDEV&&lget('pam_s',''))P.s=lget('pam_s','');
 function apiId(){return lget('pam_api','');}
 function apiUrl(){var id=apiId();return id?'https:'+'\/\/script.google.com/macros/s/'+id+'/exec':'';}
 
@@ -117,7 +122,7 @@ function relogin(){if(!MEMPW)return Promise.reject(new Error('SESSION_EXPIRED'))
   return post('login',[MEMPW]).then(function(t){setTok(t);NEEDLOGIN=false;return t;});}
 
 function loginFn(pw){
-  return post('login',[pw]).then(function(t){MEMPW=null;NEEDLOGIN=false;hash(pw).then(function(h){if(h)lset('pam_pwh',h);});setTimeout(sync,2000);return t;},
+  return post('login',[pw]).then(function(t){MEMPW=null;NEEDLOGIN=false;lset('pam_s',null);AGENTDEV=true;hash(pw).then(function(h){if(h)lset('pam_pwh',h);});setTimeout(sync,2000);return t;},
     function(e){
       if(!e.net)throw e;
       return Promise.all([hash(pw),cget('api:bootstrap:{}')]).then(function(x){
@@ -266,7 +271,11 @@ window.google={script:{
 }};
 window.addEventListener('popstate',function(e){if(HCH)HCH({state:e.state,location:{parameter:P}});});
 window.__GH={appUrl:function(){return apiId()?location.origin+location.pathname+'?a='+apiId():'';},sync:sync,queue:getQ,post:post,cget:cget,cput:cput,apiId:apiId,setupBox:setupBox};
-document.addEventListener('DOMContentLoaded',function(){banner();if(!apiId())setupBox();else setTimeout(sync,1500);});
+document.addEventListener('DOMContentLoaded',function(){
+  if(P.s&&AGENTDEV){var bk=document.createElement('a');bk.href=location.pathname;bk.textContent='↩ আমার (এজেন্টের) অ্যাপে ফিরুন';
+    bk.style.cssText='position:fixed;right:10px;bottom:12px;z-index:99998;background:#0b2a55;color:#fff;padding:9px 14px;border-radius:22px;font:600 14px system-ui,sans-serif;text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.3)';
+    document.body.appendChild(bk);}
+  banner();if(!apiId())setupBox();else setTimeout(sync,1500);});
 if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
 })();
 </script>
